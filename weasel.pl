@@ -65,9 +65,17 @@ sub error {
     $errors++;
 }
 
+sub build_acro_re {
+    # caps, some number of lowercase, caps
+    my $acro = '[A-Z]{1,}[a-z]{0,}[A-Z]{1,}';
+
+    # (space or period), acro, (plural, whitespace, or owners)
+    return '([\s\.]+' . $acro . '(?:[\s\.s]|\'s))';
+}
+
 my $weasel_re = build_weasel_re();
 my $passive_re = build_passive_re();
-my $acro_re = '[\s\.]+([A-Z]{2,}|[A-Z][a-z]{0,}[A-Z]{1,})(?:[\s\.s]|\'s)';
+my $acro_re = build_acro_re();
 
 foreach my $filename (@ARGV) {
     open (FILE, '<', $filename) or die $!;
@@ -109,8 +117,8 @@ foreach my $filename (@ARGV) {
         if ( $filename =~ /\.tex$/ ) {
             if (/$acro_re/) {
                 my $line = $_;
-                $line =~ s/\{.*\}//g;
-                $line =~ s/\[.*\]//g;
+                $line =~ s/\{.*?\}//g;
+                $line =~ s/\[.*?\]//g;
                 if ( $line =~ /$acro_re/ ) {
                     error($filename, $_, $LineNum, $1);
                 }
