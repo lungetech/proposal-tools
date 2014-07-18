@@ -53,7 +53,7 @@ sub build_weasel_re {
 
     push( @weasels, "(?:notice|note) (?:this|that)", "(?:are|is) a number" );
 
-    return '\b(' . join( '|', @weasels ) . ')\b';
+    return '\b((?<!\\\\)(?:' . join( '|', @weasels ) . '))\b';
 }
 
 sub error {
