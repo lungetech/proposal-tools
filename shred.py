@@ -1,12 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import zipfile
 import sys
 import re
 
-xml_file = 'word/document.xml'
-keywords = ('require', 'should', 'must', 'need', 'shall', 'may', 'will', 'recommend', 'option')
+XML_FILE = 'word/document.xml'
+KEYWORDS = ('require', 'should', 'must', 'need', 'shall', 'may', 'will',
+            'recommend', 'option')
 
-matches = (
+REPLACEMENTS = (
     [r'<\/w:p><\/w:tc>(?!<\/w:tr>)', ' | '],
     [r'<w:tab[^\/]*\/>', ' '],
     [r'<\/w:p>', '\n'],
@@ -20,24 +21,23 @@ matches = (
     [r'&apos;', '\''],
 )
 
-my_re = re.compile('.*(%s)' % '|'.join(keywords), re.IGNORECASE)
+REPLACE_RE = re.compile('.*(%s)' % '|'.join(KEYWORDS), re.IGNORECASE)
 
-requirements = []
 for filename in sys.argv[1:]:
     if not filename.endswith('.docx'):
-        print('%s only supports .docx files' % (sys.argv[0]))
+        print '%s only supports .docx files' % (sys.argv[0])
         continue
     with zipfile.ZipFile(filename, 'r') as z:
-        if xml_file not in z.namelist():
-            print("Error processing file (%s).  no word/document.xml found" % filename)
+        if XML_FILE not in z.namelist():
+            print "%s not found in %s" % (XML_FILE, filename)
             continue
-        data = z.read(xml_file)
+        data = z.read(XML_FILE)
 
-        for m in matches:
+        for m in REPLACEMENTS:
             data = re.sub(m[0], m[1], data)
 
         sentences = re.split(r'[.?!\n]', data)
         for sentence in sentences:
-            m = my_re.match(sentence)
+            m = REPLACE_RE.match(sentence)
             if m:
-                print("requirement (%s) : %s" % (m.group(1), sentence.strip()))
+                print "requirement (%s) : %s" % (m.group(1), sentence.strip())
