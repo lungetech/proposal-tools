@@ -57,11 +57,13 @@ sub build_weasel_re {
 }
 
 sub error {
-    my ($filename, $line, $line_number, $highlight) = @_;
+    my ($name, $filename, $line, $line_number, $highlight) = @_;
     my $green = "\033[92m";
     my $reset = "\033[0m";
+    $highlight =~ s/\\/\\\\/g;
+    $highlight =~ s/\./\\./g;
     $line =~ s/($highlight)/$green$1$reset/g;
-    print "$filename: $line_number - $highlight: $line\n";
+    print "$filename: $line_number ($name) - $highlight: $line\n";
     $errors++;
 }
 
@@ -92,6 +94,9 @@ foreach my $filename (@ARGV) {
         chomp;
 
         $LineNum++;
+
+        error('TODO', $filename, $_, $LineNum, $1) if (/(TODO|XXX)/);
+
         if ( $filename =~ /\.tex$/ ) {
             if (/^\s*\\begin{verbatim}\s*$/) {
                 $verbatim = 1;
@@ -109,8 +114,10 @@ foreach my $filename (@ARGV) {
             s/(?<!\\)\%.*//;
         }
 
-        error($filename, $_, $LineNum, $1) if (/$weasel_re/);
-        error($filename, $_, $LineNum, $1) if (/$passive_re/);
+
+        error('trailing whitespace', $filename, $_, $LineNum, $1) if (/(\.\s+)$/);
+        error('weasel', $filename, $_, $LineNum, $1) if (/$weasel_re/);
+        error('passive voice', $filename, $_, $LineNum, $1) if (/$passive_re/);
 
         # check for non-wrapped acronymns.  Use the acronymn package!
         # wrap non-acronymns via {} makes them not be selected.
@@ -120,8 +127,28 @@ foreach my $filename (@ARGV) {
                 $line =~ s/\{.*?\}//g;
                 $line =~ s/\[.*?\]//g;
                 if ( $line =~ /$acro_re/ ) {
-                    error($filename, $_, $LineNum, $1);
+                    error('wrap acronymn', $filename, $_, $LineNum, $1);
                 }
+            }
+        }
+
+        if ($filename =~ /\.tex$/) {
+            # latex writing style.  Except for \item lines, a line should have at most one sentence.
+            if (!/\\item/) {
+                if (/(\.\s+[\w\\]+)/) {
+                    error('multiple sentence line', $filename, $_, $LineNum, $1);
+                }
+            }
+
+            # latex writing style.  All lines that do not start as a latex
+            # macro should be a sentence, and therefor have a period.
+            if (length($_) > 0 && !/^\s*\\/ && !/[.:{}]$/) {
+                error('Missing period', $filename, $_, $LineNum, '');
+            }
+
+            # latex writing style.  \item entries should not have a period
+            if (/^\s*\\item/ && /(\.)$/) {
+                error('item entries with period', $filename, $_, $LineNum, $1);
             }
         }
 
@@ -137,7 +164,7 @@ foreach my $filename (@ARGV) {
 
             # Duplicate word?  Thanks to Sean Cronin for tip on case.
             if ( lc($word) eq lc($LastWord) ) {
-                error($filename, $_, $LineNum, $word);
+                error('dup', $filename, $_, $LineNum, $word);
             }
 
             # Mark this as the last word:
